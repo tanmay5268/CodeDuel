@@ -3,8 +3,7 @@ import * as React from "react";
 
 export function CreateRoom() {
     const [code, setCode] = React.useState("noCode");
-    const socketRef = React.useRef(false);
-
+    const socketRef = React.useRef(null);
     const socketConnect = () => {
         const roomCode = Math.floor(Math.random() * 1000000).toString().padStart(6, "0");
         setCode(roomCode);
@@ -15,14 +14,15 @@ export function CreateRoom() {
         }
 
         // Create new socket connection
-        const socket = io("http://localhost:3001");
+        socketRef.current = io("http://localhost:3001");
+        ;
 
-        socket.on("connect", () => {
-            console.log("Connected with ID:", socket?.id);
-            socket?.emit("roomCode", { code: roomCode });
+        socketRef.current.on("connect", () => {
+            console.log("Connected with ID:", socketRef.current?.id);
+            socketRef.current?.emit("roomCode", { code: roomCode });
         });
 
-        socket.on("roomCode", (data) => {
+        socketRef.current.on("roomCode", (data) => {
             console.log("Room code received:", data);
         });
     };
