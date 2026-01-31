@@ -33,6 +33,11 @@ io.on("connection", (socket) => {
         console.log("User disconnected:", socket.id);
     });
 });
+io.on("send_message", (data) => {
+    const { roomCode, message } = data;
+    console.log(`Message received in room ${roomCode}: ${message}`);
+    io.to(roomCode).emit("receive_message", { message });
+});
 app.post('/joinRoom', (req, res) => {
     console.log("Join room request received with body:", req.body);
     try {
