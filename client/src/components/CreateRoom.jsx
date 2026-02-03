@@ -1,44 +1,86 @@
-import { io, Socket } from "socket.io-client";
-import * as React from "react";
-import Room from "./Room";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSocket } from "../context/SocketContext";
+
 export function CreateRoom() {
-    const [code, setCode] = React.useState("noCode");
-    const socketRef = React.useRef(null);
-    const [codeSuccess, setCodeSuccess] = React.useState(false);
+    const [code, setCode] = useState("noCode");
+    const [codeSuccess, setCodeSuccess] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const navigate = useNavigate();
-    const socketConnect = () => {
 
-        if (socketRef.current) {
-            socketRef.current.disconnect();
+    const { socket, initializeSocket } = useSocket();
+
+    const handleCreateRoom = async () => {
+        if (isCreating) return;
+
+        setIsCreating(true);
+
+        try {
+            const newSocket = initializeSocket();
+
+            if (!newSocket) {
+                console.error("Failed to initialize socket");
+                setIsCreating(false);
+                return;
+            }
+
+            const handleConnect = () => {
+                console.log("Socket connected, now creating room...");
+
+                newSocket.emit("CreateRoom");
+
+                newSocket.once("roomCreated", (data) => {
+                    console.log("Room created with code:", data.code);
+                    setCode(data.code);
+                    setCodeSuccess(true);
+                    setIsCreating(false);
+                    navigate(`/room/${data.code}`);
+                });
+
+                newSocket.off("connect", handleConnect);
+            };
+
+            if (newSocket.connected) {
+                handleConnect();
+            } else {
+                newSocket.once("connect", handleConnect);
+            }
+        } catch (err) {
+            console.error("Error creating room:", err);
+            setIsCreating(false);
         }
-        // Create new socket connection
-        socketRef.current = io("http://localhost:3001");
-        socketRef.current.on("connect", () => {
-            console.log("Connected with ID:", socketRef.current?.id);
-            socketRef.current?.emit("CreateRoom");
-        });
-
-        socketRef.current.on("roomCreated", (data) => {
-            setCode(data.code);
-            console.log("Room code received:", data);
-            setCodeSuccess(true);
-        });
     };
-    React.useEffect(() => {
-        if (codeSuccess && code !== "noCode") {
-            navigate(`/room/${code}`, {
-                state: { socket: socketRef.current, roomCode: code }
-            });
-        }
-    }, [codeSuccess, code, navigate]);
 
     return (
-        <div className=" flex flex-col items-center text-center mb-6">
-            <button className="bg-blue-500  hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={socketConnect}>Create Room</button>
-            <h1 className="mt-3 w-fit p-1 rounded-lg outline">{code}</h1>
-            {codeSuccess && <div>Room Created Successfully!
-                <Room socket={socketRef.current} roomCode={code}></Room></div>}
+        <div className="flex flex-col items-center text-center mb-6 p-4 border rounded-lg">
+            <h2 className="text-xl font-bold mb-4">Create a New Room</h2>
+
+            <button
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400 mb-4"
+                onClick={handleCreateRoom}
+                disabled={isCreating}
+            >
+                {isCreating ? "Creating Room..." : "Create Room"}
+            </button>
+
+            {code !== "noCode" && (
+                <div className="mt-4 p-2 bg-gray-100 rounded">
+                    <p className="text-sm text-gray-600">Your Room Code:</p>
+                    <h1 className="text-2xl font-bold">{code}</h1>
+                </div>
+            )}
+
+            {codeSuccess && (
+                <p className="mt-3 text-green-600 font-semibold">
+                    Room Created Successfully! Socket is now connected.
+                </p>
+            )}
+
+            {socket && (
+                <p className="mt-3 text-sm text-blue-600">
+                    ✓ Socket connected (ID: {socket.id})
+                </p>
+            )}
         </div>
     );
 }

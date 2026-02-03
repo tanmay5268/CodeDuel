@@ -1,48 +1,117 @@
-import { useState,useRef } from "react";
+import { useState } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
-import Room from "./Room";
+import { useNavigate } from "react-router-dom";
+import { useSocket } from "../context/SocketContext";
+
 const JoinRoom = () => {
-
-    const [joinCode, setJoinCode] = useState(null);
+    const [joinCode, setJoinCode] = useState("");
     const [codeSuccess, setCodeSuccess] = useState(false);
-    const socketRef = useRef(null);
-    function handelCode(code) {
-        setTimeout(() => {
-            setJoinCode(code);
-        }, 500);
-    }
-    function joinwithCode() {
-        // const socket = io("http://localhost:3001");
-        // socket.on("connect", () => {
-        //     console.log("Connected with ID:", socket.id);
-        //     socket.emit("roomCode", { code: joinCode });
-        // });
-        axios.post('http://localhost:3001/joinRoom', {
-            code: joinCode
-        }).then((res) => {
-            if (res.data.available) {
-                const socket = io("http://localhost:3001");
-                socket.on("connect", () => {
-                    socketRef.current = socket;
-                    console.log("Connected with ID:", socket.id);
-                    setCodeSuccess(true);
-                });
-            } else {
-                console.log("Room code not available");
-            }
-        }).catch((err) => {
-            console.log("Error joining room:", err.message);
-        })
-    }
-    return (
-        <div className=" flex flex-col items-center text-center mb-6 border-2 p-2 rounded-lg">
-            <button onClick={() => { joinwithCode() }} className="bg-blue-500  hover:bg-blue-700 text-white font-bold mb-6 py-2 px-4 rounded">Join Room</button>
-            <input onChange={(e) => { handelCode(e.target.value) }} type="text" placeholder="Enter Room Code" className="mb-3 p-2 rounded-lg outline" />
-            {codeSuccess && <div>Joined Room Successfully!
-                <Room socket={socketRef.current} roomCode={joinCode}></Room></div>}
-        </div>
-    )
-}
+    const [isJoining, setIsJoining] = useState(false);
+    const [error, setError] = useState("");
+    const navigate = useNavigate();
 
-export default JoinRoom
+    const { socket, initializeSocket } = useSocket();
+
+    const handleCodeInput = (e) => {
+        setJoinCode(e.target.value);
+        setError("");
+    };
+
+    const joinWithCode = async () => {
+        if (!joinCode.trim()) {
+            setError("Please enter a room code");
+            return;
+        }
+
+        setIsJoining(true);
+        setError("");
+
+        try {
+            const response = await axios.post("http://localhost:3001/joinRoom", {
+                code: joinCode
+            });
+
+            if (response.data.available) {
+                const newSocket = initializeSocket();
+
+                if (!newSocket) {
+                    setError("Failed to connect to server");
+                    setIsJoining(false);
+                    return;
+                }
+
+                const handleConnect = () => {
+                    console.log("Socket connected, now joining room...");
+
+                    newSocket.emit("joinRoom", { code: joinCode });
+
+                    console.log("Joined room with code:", joinCode);
+                    setCodeSuccess(true);
+
+                    navigate(`/room/${joinCode}`);
+
+                    newSocket.off("connect", handleConnect);
+                };
+
+                if (newSocket.connected) {
+                    handleConnect();
+                } else {
+                    newSocket.once("connect", handleConnect);
+                }
+            } else {
+                setError("Room code not found. Please check and try again.");
+            }
+        } catch (err) {
+            console.error("Error joining room:", err.message);
+            setError("Error joining room. Please try again.");
+        } finally {
+            setIsJoining(false);
+        }
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === "Enter") {
+            joinWithCode();
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center text-center mb-6 border-2 p-4 rounded-lg">
+            <h2 className="mb-4 text-lg font-semibold">Join an Existing Room</h2>
+
+            <input
+                type="text"
+                placeholder="Enter Room Code"
+                value={joinCode}
+                onChange={handleCodeInput}
+                onKeyPress={handleKeyPress}
+                className="mb-3 p-2 rounded-lg border border-gray-300 outline-none focus:border-blue-500 w-full max-w-xs"
+                disabled={isJoining}
+            />
+
+            <button
+                onClick={joinWithCode}
+                disabled={isJoining}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold mb-6 py-2 px-4 rounded disabled:bg-gray-400"
+            >
+                {isJoining ? "Joining..." : "Join Room"}
+            </button>
+
+            {error && <p className="text-red-500 mb-3 text-sm">{error}</p>}
+
+            {codeSuccess && (
+                <p className="text-green-600 font-semibold">
+                    Successfully joined! Redirecting...
+                </p>
+            )}
+
+            {socket && (
+                <p className="mt-3 text-sm text-blue-600">
+                    ✓ Socket connected (ID: {socket.id})
+                </p>
+            )}
+        </div>
+    );
+};
+
+export default JoinRoom;

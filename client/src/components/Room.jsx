@@ -2,20 +2,11 @@ import { useEffect, useRef } from "react";
 import Message from "./Message";
 import { useLocation, useParams } from "react-router-dom";
 const Room = () => {
+    // i have created this component to render all features that will be used inside a room.
     const { roomCode } = useParams();
-    const location = useLocation();
-    const socket = location.state?.socket;
-
-    if (!socket) {
-        return <div>Invalid room access</div>;
-    }
     return (
         <div>
-            <h2>Room: {roomCode}</h2>
-
-            {/* pass props DOWN */}
             <Message
-                socket={socket}
                 roomCode={roomCode}
             />
         </div>
