@@ -16,7 +16,7 @@ const Message = ({ roomCode }) => {
 
         console.log("Socket is ready! Setting up message listeners for room:", roomCode);
 
-        socket.on(`message-${roomCode}`, (data) => {
+        socket.on(`receive_message-${roomCode}`, (data) => {
             console.log("New message received:", data);
             setMessages((prevMessages) => [...prevMessages, data]);
         });
@@ -27,7 +27,7 @@ const Message = ({ roomCode }) => {
 
         return () => {
             console.log("Cleaning up message listeners for room:", roomCode);
-            socket.off(`message-${roomCode}`);
+            socket.off(`receive_message`);
             socket.off(`error-${roomCode}`);
         };
     }, [socket, roomCode]);
