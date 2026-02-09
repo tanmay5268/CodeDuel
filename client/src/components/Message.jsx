@@ -6,7 +6,7 @@ const Message = ({ roomCode }) => {
     const [messages, setMessages] = useState([]);
     const [isSending, setIsSending] = useState(false);
 
-    const { socket } = useSocket();
+    const { socket } = useSocket(); 
 
     useEffect(() => {
         if (!socket || !roomCode) {

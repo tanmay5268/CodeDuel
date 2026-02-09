@@ -1,3 +1,4 @@
+import { questions } from "./ques.js";
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -34,7 +35,7 @@ io.on("connection", (socket) => {
         console.log(`User ${socket.id} joined room: ${roomCode}`);
         socket.emit("joinedRoom", { roomCode });
     });
-
+    
     socket.on("send_message", (data) => {
         const { roomCode, message, timestamp } = data;
         console.log(`Message in room ${roomCode}: ${message}`);
@@ -46,6 +47,9 @@ io.on("connection", (socket) => {
             sender: socket.id
         });
     });
+    socket.on("get_questions",(roomCode)=>{
+        io.emit(`questions-${roomCode}`,questions);
+    })
 
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);

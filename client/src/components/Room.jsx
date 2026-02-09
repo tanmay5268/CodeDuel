@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import Questions from "./Questions";``
 import Message from "./Message";
 import { useLocation, useParams } from "react-router-dom";
 const Room = () => {
@@ -9,6 +10,9 @@ const Room = () => {
             <Message
                 roomCode={roomCode}
             />
+            <Questions roomCode={roomCode}>
+
+            </Questions>
         </div>
     );
 };
